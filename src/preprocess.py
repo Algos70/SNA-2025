@@ -23,18 +23,39 @@ def remap_and_save_static(path_in, path_out, id_map):
     df.iloc[:,0] = df.iloc[:,0].map(id_map)
     df.to_csv(path_out, index=False, header=False)
 
-def remap_edges_stream(in_path, out_path, node_map, etype_map, chunksize=1_000_000):
-    reader = pd.read_csv(in_path, header=None,
-                         names=['src','dst','etype','ts'],
-                         chunksize=chunksize)
+def remap_edges_stream(in_path: str,
+                       out_path: str,
+                       node_map: dict,
+                       etype_map: dict,
+                       chunksize: int = 1_000_000,
+                       sample_frac: float = 0.1):
+    """
+    Reads in_path in chunks, randomly samples sample_frac of each chunk,
+    remaps IDs, and appends to out_path.
+    """
+    reader = pd.read_csv(
+        in_path,
+        header=None,
+        names=['src','dst','etype','ts'],
+        chunksize=chunksize
+    )
     first = True
     for chunk in reader:
+        # 1) randomly sample a fraction of rows
+        chunk = chunk.sample(frac=sample_frac, random_state=42)
+
+        # 2) remap IDs
         chunk['src']   = chunk['src'].map(node_map)
         chunk['dst']   = chunk['dst'].map(node_map)
         chunk['etype'] = chunk['etype'].map(etype_map)
-        chunk.to_csv(out_path,
-                     mode='w' if first else 'a',
-                     index=False, header=False)
+
+        # 3) write out
+        chunk.to_csv(
+            out_path,
+            mode='w' if first else 'a',
+            index=False,
+            header=False
+        )
         first = False
 
 if __name__ == '__main__':
@@ -56,6 +77,8 @@ if __name__ == '__main__':
         'data/edges_train_A.csv',
         'data/edges_train_A_mapped.csv',
         node_map,
-        etype_map
+        etype_map,
+        chunksize=1_000_000,
+        sample_frac=0.0001
     )
     print("Preprocessing done.")

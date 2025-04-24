@@ -59,6 +59,6 @@ if __name__ == '__main__':
     p.add_argument('--hidden',      type=int, default=64)
     p.add_argument('--epochs',      type=int, default=10)
     p.add_argument('--lr',          type=float, default=1e-3)
-    p.add_argument('--save_path',   default='model.pth')
+    p.add_argument('--save_path',   default='model/model.pth')
     args = p.parse_args()
     train(args)
