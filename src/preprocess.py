@@ -79,6 +79,6 @@ if __name__ == '__main__':
         node_map,
         etype_map,
         chunksize=1_000_000,
-        sample_frac=0.0001
+        sample_frac=0.000005
     )
     print("Preprocessing done.")
