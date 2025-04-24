@@ -1,80 +1,64 @@
+# src/train.py
 import torch
-import torch.nn as nn
+from torch.utils.data import DataLoader
+from dataset import TemporalLinkPredictionDataset
+from model import GConvGRULinkPredictor
 from tqdm import tqdm
-from model import GCNTemporalPredictor
-from dataset_loader import load_dynamic_graph  # from step 3
-import numpy as np
-import random
+import argparse
 
-def generate_positive_negative_edges(edge_index, num_nodes, num_samples=512):
-    edge_set = set(map(tuple, edge_index.T.tolist()))
-    pos_edges = random.sample(edge_set, min(num_samples, len(edge_set)))
+def train(args):
+    ds = TemporalLinkPredictionDataset(
+        edges_path=args.edges,
+        num_nodes=args.num_nodes,
+        node_feat_path=args.node_feats,
+        etype_feat_path=args.etype_feats,
+        neg_sample_ratio=1.0
+    )
+    loader = DataLoader(ds, batch_size=None, shuffle=False)
 
-    neg_edges = set()
-    while len(neg_edges) < len(pos_edges):
-        src = random.randint(0, num_nodes - 1)
-        dst = random.randint(0, num_nodes - 1)
-        if (src, dst) not in edge_set:
-            neg_edges.add((src, dst))
+    device = (
+    torch.device('mps')
+    if torch.backends.mps.is_available()
+    else torch.device('cpu')
+)   
+    model = GConvGRULinkPredictor(
+        in_channels=ds.node_features.shape[1],
+        hidden_channels=args.hidden
+    ).to(device)
+    optim = torch.optim.Adam(model.parameters(), lr=args.lr)
+    criterion = torch.nn.BCELoss()
 
-    return pos_edges, list(neg_edges)
-
-def compute_edge_probs(node_embeds, edge_pairs):
-    # Convert edge pairs to tensors
-    src, dst = zip(*edge_pairs)
-    src = torch.tensor(src, dtype=torch.long, device=node_embeds.device)
-    dst = torch.tensor(dst, dtype=torch.long, device=node_embeds.device)
-
-    src_vecs = node_embeds[src]
-    dst_vecs = node_embeds[dst]
-
-    scores = (src_vecs * dst_vecs).sum(dim=1)
-    return scores
-
-def train():
-    dataset = load_dynamic_graph()
-    device = torch.device("cpu")
-
-    num_node_features = dataset.features[0].shape[1]
-    num_nodes = dataset.features[0].shape[0]
-    model = GCNTemporalPredictor(node_features=num_node_features, hidden_dim=64, output_dim=64).to(device)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    loss_fn = nn.BCEWithLogitsLoss()
-
-    model.train()
-    for epoch in range(10):
+    for epoch in range(1, args.epochs+1):
         total_loss = 0
-        for t in tqdm(range(len(dataset.edge_indices) - 1)):
-            x_t = torch.FloatTensor(dataset.features[t]).to(device)
-            edge_index_t = torch.LongTensor(dataset.edge_indices[t]).to(device)
-            edge_weight_t = torch.FloatTensor(dataset.edge_weights[t]).to(device)
+        for batch in tqdm(loader, desc=f"Epoch {epoch}"):
+            x   = batch['x'].to(device)
+            ei  = batch['edge_index'].to(device)
+            pairs  = batch['pairs'].to(device)
+            labels = batch['labels'].to(device)
 
-            # Forward pass
-            node_embeds = model(x_t, edge_index_t, edge_weight_t)
+            h = model(x, ei)
+            preds = model.predict(h, pairs)
+            loss = criterion(preds, labels)
 
-            # Sample edges from next time step (t+1)
-            future_edges = dataset.edge_indices[t + 1]
-            pos_edges, neg_edges = generate_positive_negative_edges(future_edges, num_nodes)
-
-            edge_pairs = pos_edges + neg_edges
-            labels = torch.cat([
-                torch.ones(len(pos_edges)),
-                torch.zeros(len(neg_edges))
-            ]).to(device)
-
-            scores = compute_edge_probs(node_embeds, edge_pairs).to(device)
-
-            loss = loss_fn(scores, labels)
-            optimizer.zero_grad()
+            optim.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-            optimizer.step()
+            optim.step()
             total_loss += loss.item()
 
-        print(f"[Epoch {epoch+1}] Loss: {total_loss:.4f}")
+        print(f"Epoch {epoch} avg loss: {total_loss/len(loader):.4f}")
 
-    torch.save(model.state_dict(), "output/gcn_temporal.pt")
+    torch.save(model.state_dict(), args.save_path)
+    print("Training complete and model saved.")
 
-if __name__ == "__main__":
-    train()
+if __name__ == '__main__':
+    p = argparse.ArgumentParser()
+    p.add_argument('--edges',       default='data/edges_train_A_mapped.csv')
+    p.add_argument('--node_feats',  default='data/node_features_mapped.csv')
+    p.add_argument('--etype_feats', default='data/edge_type_features_mapped.csv')
+    p.add_argument('--num_nodes',   type=int, required=True)
+    p.add_argument('--hidden',      type=int, default=64)
+    p.add_argument('--epochs',      type=int, default=10)
+    p.add_argument('--lr',          type=float, default=1e-3)
+    p.add_argument('--save_path',   default='model.pth')
+    args = p.parse_args()
+    train(args)
