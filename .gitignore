@@ -1,4 +1,7 @@
 venv
-datasetA/edge_type_features.csv
-datasetA/edges_train_A.csv
-datasetA/node_features.csv
+.venv
+conda
+.conda
+__pycache__
+data/*
+output/*

@@ -1,1 +1,9 @@
-torch-geometric==2.6.1
+torch
+torchvision 
+torchaudio
+torch-geometric
+torch-geometric-temporal
+scikit-learn==1.6.1
+pandas
+numpy
+tqdm
