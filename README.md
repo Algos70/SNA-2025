@@ -63,16 +63,17 @@ tqdm
 ## Setup
 
 1. Clone the repo and navigate:
-   ```bash
-git clone <repo_url>
-cd temporal_link_prediction
-```
+  ```bash
+   git@github.com:Algos70/SNA-2025.git
+   git clone <repo_url>
+   cd temporal_link_prediction
+  ```
 2. Create & activate virtual environment:
-   ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+  ```bash
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install -r requirements.txt
+  ```
 
 ## Data Organization
 
