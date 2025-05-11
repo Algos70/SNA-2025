@@ -130,19 +130,6 @@ python src/inference.py \
   --hidden 64
 ```
 
-#### Validation Set
-
-Generate predictions for your validation queries in `data/val_queries.csv`:
-
-```bash
-python src/inference.py \
-  --model_path model.pth \
-  --edges data/edges_train_A_mapped.csv \
-  --node_feats data/node_features_mapped.csv \
-  --query data/val_queries.csv \
-  --output output/output_val.csv \
-  --hidden 64
-```
 
 ## Generating Validation Queries
 
@@ -155,6 +142,20 @@ python src/make_val.py
 This will create `data/val_queries.csv` containing rows:
 ```
 src,dst,etype,t0,t1,label
+```
+
+#### Validation Set
+
+Generate predictions for your validation queries in `data/val_queries.csv`:
+
+```bash
+python src/inference.py \
+  --model_path model/model.pth \
+  --edges data/edges_train_A_mapped.csv \
+  --node_feats data/node_features_mapped.csv \
+  --query data/val_queries.csv \
+  --output output/output_val.csv \
+  --hidden 64
 ```
 
 ## Evaluation Parameters
