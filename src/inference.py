@@ -30,6 +30,8 @@ def infer(args):
         q = pd.read_csv(args.query, names=['src','dst','etype','t0','t1'])
         pairs = torch.tensor(q[['src','dst']].values, dtype=torch.long).to(device)
         preds = model.predict(h, pairs).detach().cpu().numpy()
+        # Round predictions to binary values
+        preds = (preds >= 0.5).astype(int)
 
     out = q.copy()
     out['score'] = preds
