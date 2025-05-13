@@ -148,7 +148,7 @@ if __name__ == "__main__":
     EDGES_OUT      = "./data/edges_train_A_mapped.csv"
 
     # pick your sampling strategy here:
-    SAMPLE_FRAC    = 0.00001        # e.g. 10% of edges
+    SAMPLE_FRAC    = 0.1        # e.g. 10% of edges
     SAMPLE_N       = None       # or set to an integer
     STRATIFY_BY    = "etype"    # or "ts", or None
 
